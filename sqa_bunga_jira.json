@@ -1,0 +1,152 @@
+{
+  "issueUpdates": [
+    {
+      "fields": {
+        "project": {
+          "key": "SQAB"
+        },
+        "summary": "[SK-1] Penggunaan Karakter - Input Huruf Saja",
+        "issuetype": {
+          "name": "Task"
+        },
+        "priority": {
+          "name": "High"
+        },
+        "labels": [
+          "black-box",
+          "input-validation",
+          "karakter",
+          "positif",
+          "skenario-1"
+        ],
+        "description": {
+          "type": "doc",
+          "version": 1,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Skenario 1: Penggunaan Karakter\n\nData Entri: BungaAlice\n\nExpected: BERHASIL\n\nWarna indikator: #198754 hijau"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "fields": {
+        "project": {
+          "key": "SQAB"
+        },
+        "summary": "[SK-2] Penggunaan Angka - Input Number Saja",
+        "issuetype": {
+          "name": "Task"
+        },
+        "priority": {
+          "name": "High"
+        },
+        "labels": [
+          "black-box",
+          "input-validation",
+          "angka",
+          "positif",
+          "skenario-2"
+        ],
+        "description": {
+          "type": "doc",
+          "version": 1,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Skenario 2: Penggunaan Angka\n\nData Entri: 123456\n\nExpected: BERHASIL\n\nWarna indikator: #0d6efd biru"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "fields": {
+        "project": {
+          "key": "SQAB"
+        },
+        "summary": "[SK-3] Kombinasi Karakter dan Angka - Input Campuran",
+        "issuetype": {
+          "name": "Task"
+        },
+        "priority": {
+          "name": "Medium"
+        },
+        "labels": [
+          "black-box",
+          "input-validation",
+          "kombinasi",
+          "positif",
+          "skenario-3"
+        ],
+        "description": {
+          "type": "doc",
+          "version": 1,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Skenario 3: Kombinasi Karakter dan Angka\n\nData Entri: Bunga2026\n\nExpected: BERHASIL\n\nWarna indikator: #fd7e14 oranye"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "fields": {
+        "project": {
+          "key": "SQAB"
+        },
+        "summary": "[SK-4] Input Kosong - Tanpa Entri Data",
+        "issuetype": {
+          "name": "Task"
+        },
+        "priority": {
+          "name": "Highest"
+        },
+        "labels": [
+          "black-box",
+          "input-validation",
+          "kosong",
+          "negatif",
+          "boundary",
+          "skenario-4"
+        ],
+        "description": {
+          "type": "doc",
+          "version": 1,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Skenario 4: Input Kosong\n\nData Entri: kosong\n\nExpected: GAGAL\n\nPesan: Data tidak dapat diproses\n\nWarna indikator: #dc3545 merah"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

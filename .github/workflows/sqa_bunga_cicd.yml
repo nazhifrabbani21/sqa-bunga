@@ -1,0 +1,672 @@
+# ================================================================
+# SQA BUNGA - GitHub Actions CI/CD Pipeline
+# Proyek   : Form Pendaftaran Mahasiswa Baru USTI
+# Versi    : 2026-2
+# Tanggal  : 25 Juni 2026
+#
+# Pipeline mencakup 4 job berurutan:
+#   Job 1 - White Box Testing  : SonarQube (analisis kode statis)
+#   Job 2 - Black Box Testing  : Apache JMeter (pengujian fungsional)
+#   Job 3 - Pelaporan Jira     : Update status test case di Jira
+#   Job 4 - Deployment Staging : Deploy ke server staging (opsional)
+#
+# Secrets yang WAJIB dikonfigurasi di GitHub Repository Settings:
+#   SONAR_TOKEN      - Token autentikasi SonarQube
+#   SONAR_HOST_URL   - URL server SonarQube (http://host:9000)
+#   JIRA_BASE_URL    - URL Jira (https://xxx.atlassian.net)
+#   JIRA_USER_EMAIL  - Email akun Jira
+#   JIRA_API_TOKEN   - API Token Jira (buat di id.atlassian.com)
+#   DEPLOY_HOST      - Host server staging SSH (opsional)
+#   DEPLOY_USER      - Username SSH server staging (opsional)
+#   DEPLOY_KEY       - Private Key SSH server staging (opsional)
+#   DEPLOY_PATH      - Path direktori di server staging (opsional)
+#
+# Cara menambahkan Secret:
+#   GitHub Repo > Settings > Secrets and variables > Actions > New repository secret
+# ================================================================
+
+name: "SQA Bunga - CI/CD Pipeline Form Mahasiswa USTI"
+
+# ----------------------------------------------------------------
+# TRIGGER: Kapan pipeline ini dijalankan
+# ----------------------------------------------------------------
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "release/**"
+      - "hotfix/**"
+    paths:
+      - "**.php"
+      - ".github/workflows/sqa_bunga_cicd.yml"
+      - "sqa_bunga_jmeter.jmx"
+      - "sqa_bunga_sonarqube.properties"
+
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+  # Jalankan pipeline secara manual dari tab Actions GitHub
+  workflow_dispatch:
+    inputs:
+      skip_sonarqube:
+        description: "Lewati analisis SonarQube? (true/false)"
+        required: false
+        default: "false"
+        type: boolean
+      skip_jmeter:
+        description: "Lewati Black Box Testing JMeter? (true/false)"
+        required: false
+        default: "false"
+        type: boolean
+      skip_jira:
+        description: "Lewati pelaporan Jira? (true/false)"
+        required: false
+        default: "false"
+        type: boolean
+      skip_deploy:
+        description: "Lewati deployment staging? (true/false)"
+        required: false
+        default: "true"
+        type: boolean
+
+
+# ----------------------------------------------------------------
+# VARIABEL ENVIRONMENT GLOBAL
+# ----------------------------------------------------------------
+env:
+  PHP_VERSION:       "8.2"
+  JMETER_VERSION:    "5.6.3"
+  JAVA_VERSION:      "17"
+  APP_HOST:          "127.0.0.1"
+  APP_PORT:          "8080"
+  APP_ENDPOINT:      "/form_mahasiswa_baru.php"
+  JIRA_PROJECT_KEY:  "SQAB"
+  SONAR_PROJECT_KEY: "sqa_bunga_mahasiswa_usti"
+  REPORT_RETENTION:  "30"
+
+
+# ----------------------------------------------------------------
+# PERMISSIONS
+# ----------------------------------------------------------------
+permissions:
+  contents:      read
+  pull-requests: write
+  checks:        write
+  statuses:      write
+
+
+# ================================================================
+# JOB 1: WHITE BOX TESTING - SonarQube Static Code Analysis
+# ================================================================
+jobs:
+  sonarqube-whitebox:
+    name: "[Job-1] White Box Testing - SonarQube"
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_sonarqube != 'true' }}
+
+    outputs:
+      sonar_status: ${{ steps.sonar-result.outputs.status }}
+
+    steps:
+
+      # Step 1: Ambil kode sumber
+      - name: "Checkout Kode Sumber"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # wajib agar SonarQube dapat analisis blame & history
+
+      # Step 2: Setup runtime PHP
+      - name: "Setup PHP ${{ env.PHP_VERSION }} + Xdebug"
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions:  mbstring, xml, ctype, iconv, xdebug, curl
+          coverage:    xdebug
+          tools:       phpunit, composer
+
+      # Step 3: Cache dependensi Composer
+      - name: "Cache Composer Dependencies"
+        id: composer-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key:  composer-php${{ env.PHP_VERSION }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            composer-php${{ env.PHP_VERSION }}-
+            composer-
+
+      # Step 4: Install dependensi (jika ada composer.json)
+      - name: "Install Composer Dependencies"
+        run: |
+          if [ -f "composer.json" ]; then
+            echo "composer.json ditemukan - menjalankan composer install..."
+            composer install --no-interaction --prefer-dist --optimize-autoloader
+          else
+            echo "Tidak ada composer.json - melewati langkah ini"
+          fi
+
+      # Step 5: Jalankan PHPUnit + generate coverage
+      - name: "Jalankan PHPUnit + Generate Coverage Report"
+        run: |
+          mkdir -p coverage test-reports
+          if [ -f "phpunit.xml" ] || [ -f "phpunit.xml.dist" ]; then
+            XDEBUG_MODE=coverage phpunit \
+              --coverage-clover=coverage/clover.xml \
+              --log-junit=test-reports/junit.xml \
+              --colors=always
+            echo "Coverage dihasilkan di coverage/clover.xml"
+          else
+            echo "phpunit.xml tidak ditemukan - membuat coverage kosong..."
+            echo '<?xml version="1.0"?><coverage generated="0"><project timestamp="0"></project></coverage>' \
+              > coverage/clover.xml
+          fi
+
+      # Step 6: Jalankan SonarQube Scanner
+      - name: "Jalankan SonarQube Scanner (White Box Analysis)"
+        id: sonar-scan
+        uses: SonarSource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.projectName="SQA Bunga - Form Mahasiswa Baru USTI"
+            -Dsonar.projectVersion=2026.2.0
+            -Dsonar.sources=.
+            -Dsonar.language=php
+            -Dsonar.inclusions=**/*.php
+            -Dsonar.exclusions=**/vendor/**,**/node_modules/**,**/cache/**
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.php.coverage.reportPaths=coverage/clover.xml
+            -Dsonar.php.tests.reportPath=test-reports/junit.xml
+            -Dsonar.qualitygate.wait=true
+
+      # Step 7: Periksa Quality Gate
+      - name: "Periksa Quality Gate SonarQube"
+        id: quality-gate
+        uses: SonarSource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        continue-on-error: true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # Step 8: Simpan status hasil SonarQube
+      - name: "Simpan Status Hasil SonarQube"
+        id: sonar-result
+        run: |
+          if [ "${{ steps.quality-gate.outcome }}" = "success" ]; then
+            echo "status=PASSED" >> $GITHUB_OUTPUT
+            echo "SonarQube Quality Gate: PASSED"
+          else
+            echo "status=FAILED" >> $GITHUB_OUTPUT
+            echo "SonarQube Quality Gate: FAILED"
+          fi
+
+      # Step 9: Ringkasan ke GitHub Summary
+      - name: "Ringkasan White Box Testing"
+        if: always()
+        run: |
+          echo "## Hasil White Box Testing (SonarQube)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter         | Nilai |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------------------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Project Key       | ${{ env.SONAR_PROJECT_KEY }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch            | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| PHP Version       | ${{ env.PHP_VERSION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit SHA        | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality Gate      | ${{ steps.sonar-result.outputs.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Aspek Analisis SonarQube:" >> $GITHUB_STEP_SUMMARY
+          echo "- Bugs (cacat logika pada kode PHP)" >> $GITHUB_STEP_SUMMARY
+          echo "- Vulnerabilities (celah keamanan: XSS, Injection)" >> $GITHUB_STEP_SUMMARY
+          echo "- Security Hotspots (kode yang perlu review keamanan)" >> $GITHUB_STEP_SUMMARY
+          echo "- Code Smells (masalah maintainability)" >> $GITHUB_STEP_SUMMARY
+          echo "- Duplications (kode yang terduplikasi)" >> $GITHUB_STEP_SUMMARY
+          echo "- Coverage (persentase kode yang tercakup unit test)" >> $GITHUB_STEP_SUMMARY
+
+
+# ================================================================
+# JOB 2: BLACK BOX TESTING - Apache JMeter Functional Testing
+# ================================================================
+  jmeter-blackbox:
+    name: "[Job-2] Black Box Testing - Apache JMeter"
+    runs-on: ubuntu-latest
+    needs: sonarqube-whitebox
+    if: |
+      always() &&
+      github.event.inputs.skip_jmeter != 'true' &&
+      (needs.sonarqube-whitebox.result == 'success' ||
+       needs.sonarqube-whitebox.result == 'skipped')
+
+    outputs:
+      jmeter_status:   ${{ steps.jmeter-result.outputs.status }}
+      total_requests:  ${{ steps.parse-results.outputs.total }}
+      passed_requests: ${{ steps.parse-results.outputs.passed }}
+      failed_requests: ${{ steps.parse-results.outputs.failed }}
+
+    steps:
+
+      # Step 1: Checkout
+      - name: "Checkout Kode Sumber"
+        uses: actions/checkout@v4
+
+      # Step 2: Setup Java (wajib untuk JMeter)
+      - name: "Setup Java ${{ env.JAVA_VERSION }} (Diperlukan JMeter)"
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # Step 3: Setup PHP
+      - name: "Setup PHP ${{ env.PHP_VERSION }}"
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions:  mbstring, xml, curl
+
+      # Step 4: Verifikasi file JMX tersedia
+      - name: "Verifikasi File Konfigurasi JMeter"
+        run: |
+          if [ ! -f "sqa_bunga_jmeter.jmx" ]; then
+            echo "FATAL: sqa_bunga_jmeter.jmx tidak ditemukan di root repositori!"
+            exit 1
+          fi
+          echo "sqa_bunga_jmeter.jmx ditemukan"
+          echo "Ukuran file: $(wc -c < sqa_bunga_jmeter.jmx) bytes"
+
+      # Step 5: Jalankan PHP Development Server
+      - name: "Jalankan PHP Server di port ${{ env.APP_PORT }}"
+        run: |
+          php -S ${{ env.APP_HOST }}:${{ env.APP_PORT }} &
+          PHP_SERVER_PID=$!
+          echo "PHP_SERVER_PID=$PHP_SERVER_PID" >> $GITHUB_ENV
+          sleep 3
+          for i in 1 2 3 4 5; do
+            if curl -sf "http://${{ env.APP_HOST }}:${{ env.APP_PORT }}${{ env.APP_ENDPOINT }}" > /dev/null 2>&1; then
+              echo "PHP server aktif di http://${{ env.APP_HOST }}:${{ env.APP_PORT }}"
+              break
+            fi
+            echo "Percobaan $i/5 - menunggu server..."
+            sleep 2
+          done
+
+      # Step 6: Cache binary JMeter
+      - name: "Cache Apache JMeter ${{ env.JMETER_VERSION }}"
+        id: cache-jmeter
+        uses: actions/cache@v4
+        with:
+          path: "apache-jmeter-${{ env.JMETER_VERSION }}"
+          key:  "jmeter-${{ env.JMETER_VERSION }}-linux"
+
+      # Step 7: Download JMeter (jika tidak ada di cache)
+      - name: "Download Apache JMeter ${{ env.JMETER_VERSION }}"
+        if: steps.cache-jmeter.outputs.cache-hit != 'true'
+        run: |
+          wget -q \
+            "https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${{ env.JMETER_VERSION }}.tgz" \
+            -O jmeter.tgz
+          tar -xzf jmeter.tgz
+          rm jmeter.tgz
+          chmod +x "apache-jmeter-${{ env.JMETER_VERSION }}/bin/jmeter"
+          echo "JMeter ${{ env.JMETER_VERSION }} siap digunakan"
+
+      # Step 8: Buat direktori output
+      - name: "Siapkan Direktori Output Pengujian"
+        run: mkdir -p jmeter-results/html-report
+
+      # Step 9: Eksekusi Black Box Test JMeter
+      - name: "Eksekusi Black Box Test - 4 Skenario Pengujian"
+        id: run-jmeter
+        run: |
+          echo "=========================================="
+          echo "  SQA BUNGA - Black Box Testing JMeter"
+          echo "  Target : http://${{ env.APP_HOST }}:${{ env.APP_PORT }}${{ env.APP_ENDPOINT }}"
+          echo "  SK-1: Input Karakter (BungaAlice)"
+          echo "  SK-2: Input Angka    (123456)"
+          echo "  SK-3: Kombinasi      (Bunga2026)"
+          echo "  SK-4: Input Kosong   (negatif test)"
+          echo "=========================================="
+
+          "apache-jmeter-${{ env.JMETER_VERSION }}/bin/jmeter" \
+            -n \
+            -t  sqa_bunga_jmeter.jmx \
+            -l  jmeter-results/sqa_bunga_results.jtl \
+            -e \
+            -o  jmeter-results/html-report \
+            -j  jmeter-results/jmeter-execution.log \
+            -Jhost=${{ env.APP_HOST }} \
+            -Jport=${{ env.APP_PORT }} \
+            -Jprotocol=http \
+            -Jendpoint=${{ env.APP_ENDPOINT }}
+
+          EXIT_CODE=$?
+          echo "jmeter_exit_code=$EXIT_CODE" >> $GITHUB_ENV
+          echo "JMeter selesai dengan exit code: $EXIT_CODE"
+
+      # Step 10: Parse dan analisis hasil .jtl
+      - name: "Parse Hasil Pengujian JMeter (.jtl)"
+        id: parse-results
+        if: always()
+        run: |
+          JTL_FILE="jmeter-results/sqa_bunga_results.jtl"
+          if [ -f "$JTL_FILE" ]; then
+            TOTAL=$(tail -n +2 "$JTL_FILE"  | wc -l | xargs)
+            PASSED=$(tail -n +2 "$JTL_FILE" | awk -F',' '$8=="true"'  | wc -l | xargs)
+            FAILED=$(tail -n +2 "$JTL_FILE" | awk -F',' '$8=="false"' | wc -l | xargs)
+            echo "total=$TOTAL"   >> $GITHUB_OUTPUT
+            echo "passed=$PASSED" >> $GITHUB_OUTPUT
+            echo "failed=$FAILED" >> $GITHUB_OUTPUT
+            echo "==========================="
+            echo "  HASIL BLACK BOX JMETER"
+            echo "  Total   : $TOTAL"
+            echo "  Berhasil: $PASSED"
+            echo "  Gagal   : $FAILED"
+            echo "==========================="
+          else
+            echo "total=0"  >> $GITHUB_OUTPUT
+            echo "passed=0" >> $GITHUB_OUTPUT
+            echo "failed=0" >> $GITHUB_OUTPUT
+            echo "File JTL tidak ditemukan"
+          fi
+
+      # Step 11: Tentukan status keseluruhan JMeter
+      - name: "Evaluasi Status Pengujian JMeter"
+        id: jmeter-result
+        if: always()
+        run: |
+          FAILED="${{ steps.parse-results.outputs.failed }}"
+          EXIT_CODE="${{ env.jmeter_exit_code }}"
+          if [ "$FAILED" = "0" ] && [ "$EXIT_CODE" = "0" ]; then
+            echo "status=PASSED" >> $GITHUB_OUTPUT
+            echo "Semua skenario Black Box Testing BERHASIL"
+          else
+            echo "status=FAILED" >> $GITHUB_OUTPUT
+            echo "Ada skenario yang GAGAL (Failed=$FAILED, ExitCode=$EXIT_CODE)"
+          fi
+
+      # Step 12: Ringkasan ke GitHub Summary
+      - name: "Ringkasan Black Box Testing"
+        if: always()
+        run: |
+          echo "## Hasil Black Box Testing (JMeter)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metrik        | Nilai |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Total Request | ${{ steps.parse-results.outputs.total }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Berhasil      | ${{ steps.parse-results.outputs.passed }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Gagal         | ${{ steps.parse-results.outputs.failed }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status        | ${{ steps.jmeter-result.outputs.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 4 Skenario Pengujian:" >> $GITHUB_STEP_SUMMARY
+          echo "| No | Skenario                    | Data Input | Expected | Warna Indikator |" >> $GITHUB_STEP_SUMMARY
+          echo "|----|-----------------------------|-----------:|----------|-----------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 1  | Input Karakter              | BungaAlice | BERHASIL | Hijau  #198754  |" >> $GITHUB_STEP_SUMMARY
+          echo "| 2  | Input Angka                 | 123456     | BERHASIL | Biru   #0d6efd  |" >> $GITHUB_STEP_SUMMARY
+          echo "| 3  | Kombinasi Karakter + Angka  | Bunga2026  | BERHASIL | Oranye #fd7e14  |" >> $GITHUB_STEP_SUMMARY
+          echo "| 4  | Input Kosong (Negatif Test) | (kosong)   | GAGAL    | Merah  #dc3545  |" >> $GITHUB_STEP_SUMMARY
+
+      # Step 13: Upload laporan HTML JMeter
+      - name: "Upload Laporan HTML JMeter"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name:           "sqa-bunga-jmeter-html-report-run${{ github.run_number }}"
+          path:           "jmeter-results/html-report/"
+          retention-days: ${{ env.REPORT_RETENTION }}
+
+      # Step 14: Upload raw JTL results
+      - name: "Upload Raw JTL Results"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name:           "sqa-bunga-jmeter-jtl-run${{ github.run_number }}"
+          path:           "jmeter-results/sqa_bunga_results.jtl"
+          retention-days: ${{ env.REPORT_RETENTION }}
+
+      # Step 15: Upload log eksekusi JMeter
+      - name: "Upload Log Eksekusi JMeter"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name:           "sqa-bunga-jmeter-log-run${{ github.run_number }}"
+          path:           "jmeter-results/jmeter-execution.log"
+          retention-days: 7
+
+      # Step 16: Hentikan PHP server
+      - name: "Hentikan PHP Development Server"
+        if: always()
+        run: |
+          if [ -n "$PHP_SERVER_PID" ]; then
+            kill $PHP_SERVER_PID 2>/dev/null || true
+            echo "PHP server dihentikan (PID: $PHP_SERVER_PID)"
+          fi
+
+
+# ================================================================
+# JOB 3: PELAPORAN KE JIRA - Update Test Case & Buat Laporan Run
+# ================================================================
+  jira-reporting:
+    name: "[Job-3] Pelaporan ke Jira"
+    runs-on: ubuntu-latest
+    needs: [sonarqube-whitebox, jmeter-blackbox]
+    if: |
+      always() &&
+      github.event.inputs.skip_jira != 'true'
+
+    steps:
+
+      # Step 1: Checkout
+      - name: "Checkout Kode Sumber"
+        uses: actions/checkout@v4
+
+      # Step 2: Verifikasi koneksi Jira
+      - name: "Verifikasi Koneksi ke Jira"
+        id: jira-check
+        env:
+          JIRA_BASE_URL:   ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN:  ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          if [ -z "$JIRA_BASE_URL" ] || [ -z "$JIRA_USER_EMAIL" ] || [ -z "$JIRA_API_TOKEN" ]; then
+            echo "Secrets Jira belum dikonfigurasi - melewati pelaporan"
+            echo "configured=false" >> $GITHUB_OUTPUT
+          else
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              --max-time 10 \
+              -u "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
+              "$JIRA_BASE_URL/rest/api/3/myself")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Koneksi ke Jira berhasil (HTTP $HTTP_CODE)"
+              echo "configured=true" >> $GITHUB_OUTPUT
+            else
+              echo "Gagal terhubung ke Jira (HTTP $HTTP_CODE)"
+              echo "configured=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      # Step 3: Hitung status pipeline keseluruhan
+      - name: "Hitung Status Pipeline Keseluruhan"
+        id: pipeline-status
+        run: |
+          SONAR="${{ needs.sonarqube-whitebox.result }}"
+          JMETER="${{ needs.jmeter-blackbox.result }}"
+          echo "SonarQube: $SONAR | JMeter: $JMETER"
+          if [ "$SONAR" = "success" ] && [ "$JMETER" = "success" ]; then
+            echo "overall=PASSED"   >> $GITHUB_OUTPUT
+            echo "priority=Low"     >> $GITHUB_OUTPUT
+          elif [ "$SONAR" = "failure" ] || [ "$JMETER" = "failure" ]; then
+            echo "overall=FAILED"   >> $GITHUB_OUTPUT
+            echo "priority=High"    >> $GITHUB_OUTPUT
+          else
+            echo "overall=WARNING"  >> $GITHUB_OUTPUT
+            echo "priority=Medium"  >> $GITHUB_OUTPUT
+          fi
+
+      # Step 4: Buat laporan CI/CD Run di Jira
+      - name: "Buat Laporan CI/CD Run di Jira"
+        if: steps.jira-check.outputs.configured == 'true'
+        env:
+          JIRA_BASE_URL:   ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN:  ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          OVERALL="${{ steps.pipeline-status.outputs.overall }}"
+          PRIORITY="${{ steps.pipeline-status.outputs.priority }}"
+          SONAR="${{ needs.sonarqube-whitebox.result }}"
+          JMETER="${{ needs.jmeter-blackbox.result }}"
+          TOTAL="${{ needs.jmeter-blackbox.outputs.total_requests }}"
+          PASSED="${{ needs.jmeter-blackbox.outputs.passed_requests }}"
+          FAILED="${{ needs.jmeter-blackbox.outputs.failed_requests }}"
+
+          PAYLOAD=$(cat <<JSONPAYLOAD
+          {
+            "fields": {
+              "project":     { "key": "${{ env.JIRA_PROJECT_KEY }}" },
+              "summary":     "[CI/CD #${{ github.run_number }}] $OVERALL - Form Mahasiswa Baru USTI",
+              "issuetype":   { "name": "Task" },
+              "priority":    { "name": "$PRIORITY" },
+              "labels":      ["sqa-bunga", "ci-cd", "automated", "form-mahasiswa-usti"],
+              "description": {
+                "type":    "doc",
+                "version": 1,
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      { "type": "text", "text": "Pipeline    : ${{ github.workflow }}" },
+                      { "type": "hardBreak" },
+                      { "type": "text", "text": "Branch      : ${{ github.ref_name }}" },
+                      { "type": "hardBreak" },
+                      { "type": "text", "text": "Commit      : ${{ github.sha }}" },
+                      { "type": "hardBreak" },
+                      { "type": "text", "text": "Run Number  : #${{ github.run_number }}" },
+                      { "type": "hardBreak" },
+                      { "type": "text", "text": "SonarQube   : $SONAR" },
+                      { "type": "hardBreak" },
+                      { "type": "text", "text": "JMeter      : $JMETER (Total=$TOTAL | Passed=$PASSED | Failed=$FAILED)" },
+                      { "type": "hardBreak" },
+                      { "type": "text", "text": "Overall     : $OVERALL" }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+          JSONPAYLOAD
+          )
+
+          HTTP_CODE=$(curl -s -o /tmp/jira_response.json -w "%{http_code}" \
+            -X POST \
+            -u "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$JIRA_BASE_URL/rest/api/3/issue")
+
+          if [ "$HTTP_CODE" = "201" ]; then
+            ISSUE_KEY=$(python3 -c "import json; d=json.load(open('/tmp/jira_response.json')); print(d.get('key','N/A'))")
+            echo "Issue Jira berhasil dibuat: $ISSUE_KEY"
+          else
+            echo "Gagal membuat issue Jira (HTTP $HTTP_CODE)"
+            cat /tmp/jira_response.json
+          fi
+
+      # Step 5: Ringkasan ke GitHub Summary
+      - name: "Ringkasan Pelaporan Jira"
+        if: always()
+        run: |
+          echo "## Pelaporan Jira" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter      | Nilai |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Jira Project   | ${{ env.JIRA_PROJECT_KEY }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Configured     | ${{ steps.jira-check.outputs.configured }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Overall Status | ${{ steps.pipeline-status.outputs.overall }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Priority       | ${{ steps.pipeline-status.outputs.priority }} |" >> $GITHUB_STEP_SUMMARY
+
+
+# ================================================================
+# JOB 4: DEPLOYMENT STAGING - Deploy ke Server Staging (Opsional)
+# ================================================================
+  deploy-staging:
+    name: "[Job-4] Deployment ke Staging Server"
+    runs-on: ubuntu-latest
+    needs: [sonarqube-whitebox, jmeter-blackbox, jira-reporting]
+    if: |
+      always() &&
+      github.ref_name == 'main' &&
+      github.event.inputs.skip_deploy != 'true' &&
+      needs.sonarqube-whitebox.result == 'success' &&
+      needs.jmeter-blackbox.result == 'success'
+
+    environment:
+      name: staging
+      url:  http://${{ secrets.DEPLOY_HOST }}/form_mahasiswa_baru.php
+
+    steps:
+
+      # Step 1: Checkout
+      - name: "Checkout Kode Sumber"
+        uses: actions/checkout@v4
+
+      # Step 2: Verifikasi file sebelum deploy
+      - name: "Verifikasi Sintaks PHP Sebelum Deploy"
+        run: |
+          echo "Verifikasi sintaks PHP semua file..."
+          ALL_OK=true
+          find . -name "*.php" -not -path "*/vendor/*" | while read f; do
+            if php -l "$f" > /dev/null 2>&1; then
+              echo "  OK: $f"
+            else
+              echo "  ERROR: $f (syntax error)"
+              ALL_OK=false
+            fi
+          done
+          if [ "$ALL_OK" = "false" ]; then
+            echo "Ada file PHP dengan syntax error!"
+            exit 1
+          fi
+          echo "Semua file PHP lolos verifikasi sintaks"
+
+      # Step 3: Deploy via SCP ke server staging
+      - name: "Deploy via SSH ke Staging Server"
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host:     ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key:      ${{ secrets.DEPLOY_KEY }}
+          source:   "*.php"
+          target:   ${{ secrets.DEPLOY_PATH }}
+
+      # Step 4: Verifikasi deployment aktif
+      - name: "Verifikasi Deployment Aktif"
+        run: |
+          DEPLOY_URL="http://${{ secrets.DEPLOY_HOST }}/form_mahasiswa_baru.php"
+          echo "Memeriksa deployment di: $DEPLOY_URL"
+          for i in 1 2 3; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$DEPLOY_URL" 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Deployment berhasil! Aplikasi aktif di $DEPLOY_URL"
+              break
+            fi
+            echo "Percobaan $i/3 - HTTP $HTTP_CODE, menunggu 5 detik..."
+            sleep 5
+          done
+
+      # Step 5: Ringkasan deployment
+      - name: "Ringkasan Deployment"
+        if: always()
+        run: |
+          echo "## Hasil Deployment Staging" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter  | Nilai |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Server     | ${{ secrets.DEPLOY_HOST }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch     | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit     | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Job Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> Job ini hanya berjalan pada branch main setelah semua pengujian lulus." >> $GITHUB_STEP_SUMMARY

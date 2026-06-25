@@ -1,0 +1,6 @@
+projectKey=sqa_bunga
+serverUrl=http://localhost:9000
+serverVersion=26.6.0.123539
+dashboardUrl=http://localhost:9000/dashboard?id=sqa_bunga
+ceTaskId=5a0ba463-f7b4-46b6-978e-592634159d31
+ceTaskUrl=http://localhost:9000/api/ce/task?id=5a0ba463-f7b4-46b6-978e-592634159d31
