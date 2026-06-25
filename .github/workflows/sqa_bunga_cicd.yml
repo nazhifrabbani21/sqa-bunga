@@ -66,11 +66,11 @@ on:
         required: false
         default: "false"
         type: boolean
-      skip_deploy:
-        description: "Lewati deployment staging? (true/false)"
-        required: false
-        default: "true"
-        type: boolean
+      #skip_deploy:
+        #description: "Lewati deployment staging? (true/false)"
+        #required: false
+        #default: "true"
+        #type: boolean
 
 
 # ----------------------------------------------------------------
@@ -591,82 +591,82 @@ jobs:
 # ================================================================
 # JOB 4: DEPLOYMENT STAGING - Deploy ke Server Staging (Opsional)
 # ================================================================
-  deploy-staging:
-    name: "[Job-4] Deployment ke Staging Server"
-    runs-on: ubuntu-latest
-    needs: [sonarqube-whitebox, jmeter-blackbox, jira-reporting]
-    if: |
-      always() &&
-      github.ref_name == 'main' &&
-      github.event.inputs.skip_deploy != 'true' &&
-      needs.sonarqube-whitebox.result == 'success' &&
-      needs.jmeter-blackbox.result == 'success'
+  #deploy-staging:
+    #name: "[Job-4] Deployment ke Staging Server"
+    #runs-on: ubuntu-latest
+    #needs: [sonarqube-whitebox, jmeter-blackbox, jira-reporting]
+    #if: |
+      #always() &&
+      #github.ref_name == 'main' &&
+      #github.event.inputs.skip_deploy != 'true' &&
+      #needs.sonarqube-whitebox.result == 'success' &&
+      #needs.jmeter-blackbox.result == 'success'
 
-    environment:
-      name: staging
-      url:  http://${{ secrets.DEPLOY_HOST }}/form_mahasiswa_baru.php
+    #environment:
+      #name: staging
+      #url:  http://${{ secrets.DEPLOY_HOST }}/form_mahasiswa_baru.php
 
-    steps:
+    #steps:
 
       # Step 1: Checkout
-      - name: "Checkout Kode Sumber"
-        uses: actions/checkout@v4
+      #- name: "Checkout Kode Sumber"
+        #uses: actions/checkout@v4
 
       # Step 2: Verifikasi file sebelum deploy
-      - name: "Verifikasi Sintaks PHP Sebelum Deploy"
-        run: |
-          echo "Verifikasi sintaks PHP semua file..."
-          ALL_OK=true
-          find . -name "*.php" -not -path "*/vendor/*" | while read f; do
-            if php -l "$f" > /dev/null 2>&1; then
-              echo "  OK: $f"
-            else
-              echo "  ERROR: $f (syntax error)"
-              ALL_OK=false
-            fi
-          done
-          if [ "$ALL_OK" = "false" ]; then
-            echo "Ada file PHP dengan syntax error!"
-            exit 1
-          fi
-          echo "Semua file PHP lolos verifikasi sintaks"
+      #- name: "Verifikasi Sintaks PHP Sebelum Deploy"
+        #run: |
+          #echo "Verifikasi sintaks PHP semua file..."
+          #ALL_OK=true
+          #find . -name "*.php" -not -path "*/vendor/*" | while read f; do
+            #if php -l "$f" > /dev/null 2>&1; then
+              #echo "  OK: $f"
+            #else
+              #echo "  ERROR: $f (syntax error)"
+              #ALL_OK=false
+            #fi
+          #done
+          #if [ "$ALL_OK" = "false" ]; then
+            #echo "Ada file PHP dengan syntax error!"
+            #exit 1
+          #fi
+          #echo "Semua file PHP lolos verifikasi sintaks"
 
       # Step 3: Deploy via SCP ke server staging
-      - name: "Deploy via SSH ke Staging Server"
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host:     ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key:      ${{ secrets.DEPLOY_KEY }}
-          source:   "*.php"
-          target:   ${{ secrets.DEPLOY_PATH }}
+      #- name: "Deploy via SSH ke Staging Server"
+        #uses: appleboy/scp-action@v0.1.7
+        #with:
+          #host:     ${{ secrets.DEPLOY_HOST }}
+          #username: ${{ secrets.DEPLOY_USER }}
+          #key:      ${{ secrets.DEPLOY_KEY }}
+          #source:   "*.php"
+          #target:   ${{ secrets.DEPLOY_PATH }}
 
       # Step 4: Verifikasi deployment aktif
-      - name: "Verifikasi Deployment Aktif"
-        run: |
-          DEPLOY_URL="http://${{ secrets.DEPLOY_HOST }}/form_mahasiswa_baru.php"
-          echo "Memeriksa deployment di: $DEPLOY_URL"
-          for i in 1 2 3; do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$DEPLOY_URL" 2>/dev/null || echo "000")
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "Deployment berhasil! Aplikasi aktif di $DEPLOY_URL"
-              break
-            fi
-            echo "Percobaan $i/3 - HTTP $HTTP_CODE, menunggu 5 detik..."
-            sleep 5
-          done
+      #- name: "Verifikasi Deployment Aktif"
+        #run: |
+          #DEPLOY_URL="http://${{ secrets.DEPLOY_HOST }}/form_mahasiswa_baru.php"
+          #echo "Memeriksa deployment di: $DEPLOY_URL"
+          #for i in 1 2 3; do
+            #HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$DEPLOY_URL" 2>/dev/null || echo "000")
+            #if [ "$HTTP_CODE" = "200" ]; then
+              #echo "Deployment berhasil! Aplikasi aktif di $DEPLOY_URL"
+              #break
+            #fi
+            #echo "Percobaan $i/3 - HTTP $HTTP_CODE, menunggu 5 detik..."
+            #sleep 5
+          #done
 
       # Step 5: Ringkasan deployment
-      - name: "Ringkasan Deployment"
-        if: always()
-        run: |
-          echo "## Hasil Deployment Staging" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Parameter  | Nilai |" >> $GITHUB_STEP_SUMMARY
-          echo "|------------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Server     | ${{ secrets.DEPLOY_HOST }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branch     | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Commit     | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Job Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> Job ini hanya berjalan pada branch main setelah semua pengujian lulus." >> $GITHUB_STEP_SUMMARY
+      #- name: "Ringkasan Deployment"
+        #if: always()
+        #run: |
+          #echo "## Hasil Deployment Staging" >> $GITHUB_STEP_SUMMARY
+          #echo "" >> $GITHUB_STEP_SUMMARY
+          #echo "| Parameter  | Nilai |" >> $GITHUB_STEP_SUMMARY
+          #echo "|------------|-------|" >> $GITHUB_STEP_SUMMARY
+          #echo "| Server     | ${{ secrets.DEPLOY_HOST }} |" >> $GITHUB_STEP_SUMMARY
+          #echo "| Branch     | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          #echo "| Commit     | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          #echo "| Job Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
+          #echo "" >> $GITHUB_STEP_SUMMARY
+          #echo "> Job ini hanya berjalan pada branch main setelah semua pengujian lulus." >> $GITHUB_STEP_SUMMARY
