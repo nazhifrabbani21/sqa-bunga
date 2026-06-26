@@ -3,7 +3,7 @@
     {
       "fields": {
         "project": {
-          "key": "SQAB"
+          "key": "SQAA"
         },
         "summary": "[SK-1] Penggunaan Karakter - Input Huruf Saja",
         "issuetype": {
@@ -28,7 +28,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Skenario 1: Penggunaan Karakter\n\nData Entri: BungaAlice\n\nExpected: BERHASIL\n\nWarna indikator: #198754 hijau"
+                  "text": "Skenario 1: Penggunaan Karakter\n\nData Entri: Amanda\n\nExpected: BERHASIL\n\nWarna indikator: #198754 hijau"
                 }
               ]
             }
@@ -40,7 +40,7 @@
     {
       "fields": {
         "project": {
-          "key": "SQAB"
+          "key": "SQAA"
         },
         "summary": "[SK-2] Penggunaan Angka - Input Number Saja",
         "issuetype": {
@@ -77,7 +77,7 @@
     {
       "fields": {
         "project": {
-          "key": "SQAB"
+          "key": "SQAA"
         },
         "summary": "[SK-3] Kombinasi Karakter dan Angka - Input Campuran",
         "issuetype": {
@@ -102,7 +102,7 @@
               "content": [
                 {
                   "type": "text",
-                  "text": "Skenario 3: Kombinasi Karakter dan Angka\n\nData Entri: Bunga2026\n\nExpected: BERHASIL\n\nWarna indikator: #fd7e14 oranye"
+                  "text": "Skenario 3: Kombinasi Karakter dan Angka\n\nData Entri: Amanda2026\n\nExpected: BERHASIL\n\nWarna indikator: #fd7e14 oranye"
                 }
               ]
             }
@@ -114,7 +114,7 @@
     {
       "fields": {
         "project": {
-          "key": "SQAB"
+          "key": "SQAA"
         },
         "summary": "[SK-4] Input Kosong - Tanpa Entri Data",
         "issuetype": {

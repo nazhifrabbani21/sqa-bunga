@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
   <hashTree>
-    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="SQA Bunga - Black Box Testing Form Mahasiswa Baru USTI">
-      <stringProp name="TestPlan.comments">Black Box Testing menggunakan Apache JMeter 5.6.3 | SQA Bunga | USTI 2026</stringProp>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="SQA Amanda - Black Box Testing Form Mahasiswa Baru USTI">
+      <stringProp name="TestPlan.comments">Black Box Testing menggunakan Apache JMeter 5.6.3 | SQA | USTI 2026</stringProp>
       <boolProp name="TestPlan.serialize_threadgroups">true</boolProp>
       <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
       <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
@@ -31,7 +31,7 @@
       </elementProp>
     </TestPlan>
     <hashTree>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="[SK-1] Input Karakter - Huruf Saja (BungaAlice)">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="[SK-1] Input Karakter - Huruf Saja (Amanda)">
         <intProp name="ThreadGroup.num_threads">1</intProp>
         <intProp name="ThreadGroup.ramp_time">1</intProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
@@ -42,7 +42,7 @@
         </elementProp>
       </ThreadGroup>
       <hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST form_mahasiswa_baru.php | nama=BungaAlice" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST form_mahasiswa_baru.php | nama=Amanda" enabled="true">
           <intProp name="HTTPSampler.connect_timeout">5000</intProp>
           <intProp name="HTTPSampler.response_timeout">10000</intProp>
           <stringProp name="HTTPSampler.domain">${BASE_URL}</stringProp>
@@ -59,7 +59,7 @@
               <elementProp name="nama" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">false</boolProp>
                 <stringProp name="Argument.name">nama</stringProp>
-                <stringProp name="Argument.value">BungaAlice</stringProp>
+                <stringProp name="Argument.value">Amanda</stringProp>
                 <stringProp name="Argument.metadata">=</stringProp>
                 <boolProp name="HTTPArgument.use_equals">true</boolProp>
               </elementProp>
@@ -97,11 +97,11 @@
             <intProp name="Assertion.test_type">2</intProp>
           </ResponseAssertion>
           <hashTree/>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="[SK-1][A4] Data BungaAlice Tercermin di Respons" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="[SK-1][A4] Data Amanda Tercermin di Respons" enabled="true">
             <collectionProp name="Asserion.test_strings">
-              <stringProp name="1390788363">BungaAlice</stringProp>
+              <stringProp name="1964557238">Amanda</stringProp>
             </collectionProp>
-            <stringProp name="Assertion.custom_message">Gagal: Body harus menampilkan data input BungaAlice</stringProp>
+            <stringProp name="Assertion.custom_message">Gagal: Body harus menampilkan data input Amanda</stringProp>
             <stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
             <boolProp name="Assertion.assume_success">false</boolProp>
             <intProp name="Assertion.test_type">2</intProp>
@@ -215,7 +215,7 @@
           <hashTree/>
         </hashTree>
       </hashTree>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="[SK-3] Input Kombinasi - Karakter dan Angka (Bunga2026)" enabled="true">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="[SK-3] Input Kombinasi - Karakter dan Angka (Amanda2026)" enabled="true">
         <intProp name="ThreadGroup.num_threads">1</intProp>
         <intProp name="ThreadGroup.ramp_time">1</intProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
@@ -226,7 +226,7 @@
         </elementProp>
       </ThreadGroup>
       <hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST form_mahasiswa_baru.php | nama=Bunga2026" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST form_mahasiswa_baru.php | nama=Amanda2026" enabled="true">
           <intProp name="HTTPSampler.connect_timeout">5000</intProp>
           <intProp name="HTTPSampler.response_timeout">10000</intProp>
           <stringProp name="HTTPSampler.domain">${BASE_URL}</stringProp>
@@ -243,7 +243,7 @@
               <elementProp name="nama" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">false</boolProp>
                 <stringProp name="Argument.name">nama</stringProp>
-                <stringProp name="Argument.value">Bunga2026</stringProp>
+                <stringProp name="Argument.value">Amanda2026</stringProp>
                 <stringProp name="Argument.metadata">=</stringProp>
                 <boolProp name="HTTPArgument.use_equals">true</boolProp>
               </elementProp>
@@ -281,11 +281,11 @@
             <intProp name="Assertion.test_type">2</intProp>
           </ResponseAssertion>
           <hashTree/>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="[SK-3][A4] Data Bunga2026 Tercermin di Respons" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="[SK-3][A4] Data Amanda2026 Tercermin di Respons" enabled="true">
             <collectionProp name="Asserion.test_strings">
-              <stringProp name="598547191">Bunga2026</stringProp>
+              <stringProp name="-283415112">Amanda2026</stringProp>
             </collectionProp>
-            <stringProp name="Assertion.custom_message">Gagal: Body harus menampilkan data input Bunga2026</stringProp>
+            <stringProp name="Assertion.custom_message">Gagal: Body harus menampilkan data input Amanda2026</stringProp>
             <stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
             <boolProp name="Assertion.assume_success">false</boolProp>
             <intProp name="Assertion.test_type">2</intProp>
@@ -399,7 +399,7 @@
           <hashTree/>
         </hashTree>
       </hashTree>
-      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree">
+      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="true">
         <boolProp name="ResultCollector.error_logging">false</boolProp>
         <objProp>
           <name>saveConfig</name>
@@ -433,10 +433,10 @@
             <connectTime>true</connectTime>
           </value>
         </objProp>
-        <stringProp name="filename">sqa_bunga_view_results.jtl</stringProp>
+        <stringProp name="filename">sqa_view_results.jtl</stringProp>
       </ResultCollector>
       <hashTree/>
-      <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="Aggregate Report">
+      <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="Aggregate Report" enabled="true">
         <boolProp name="ResultCollector.error_logging">false</boolProp>
         <objProp>
           <name>saveConfig</name>
@@ -468,7 +468,7 @@
             <threadCounts>true</threadCounts>
           </value>
         </objProp>
-        <stringProp name="filename">sqa_bunga_aggregate.csv</stringProp>
+        <stringProp name="filename">sqa_aggregate.csv</stringProp>
       </ResultCollector>
       <hashTree/>
       <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report" enabled="true">
@@ -501,7 +501,7 @@
             <sentBytes>true</sentBytes>
           </value>
         </objProp>
-        <stringProp name="filename">sqa_bunga_summary.csv</stringProp>
+        <stringProp name="filename">sqa_summary.csv</stringProp>
       </ResultCollector>
       <hashTree/>
     </hashTree>

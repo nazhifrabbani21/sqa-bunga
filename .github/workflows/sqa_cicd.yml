@@ -1,5 +1,5 @@
 # ================================================================
-# SQA BUNGA - GitHub Actions CI/CD Pipeline
+# SQA - GitHub Actions CI/CD Pipeline
 # Proyek   : Form Pendaftaran Mahasiswa Baru USTI
 # Versi    : 2026-2
 # Tanggal  : 25 Juni 2026
@@ -25,7 +25,7 @@
 #   GitHub Repo > Settings > Secrets and variables > Actions > New repository secret
 # ================================================================
 
-name: "SQA Bunga - CI/CD Pipeline Form Mahasiswa USTI"
+name: "Project SQA - CI/CD Pipeline Form Mahasiswa USTI"
 
 # ----------------------------------------------------------------
 # TRIGGER: Kapan pipeline ini dijalankan
@@ -39,9 +39,9 @@ on:
       - "hotfix/**"
     paths:
       - "**.php"
-      - ".github/workflows/sqa_bunga_cicd.yml"
-      - "sqa_bunga_jmeter.jmx"
-      - "sqa_bunga_sonarqube.properties"
+      - ".github/workflows/sqa_cicd.yml"
+      - "sqa_jmeter.jmx"
+      - "sqa_sonarqube.properties"
 
   pull_request:
     branches:
@@ -84,7 +84,7 @@ env:
   APP_PORT:          "8080"
   APP_ENDPOINT:      "/form_mahasiswa_baru.php"
   JIRA_PROJECT_KEY:  "SQAB"
-  SONAR_PROJECT_KEY: "sqa_bunga_mahasiswa_usti"
+  SONAR_PROJECT_KEY: "sqa_mahasiswa_usti"
   REPORT_RETENTION:  "30"
 
 
@@ -174,7 +174,7 @@ jobs:
         with:
           args: >
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
-            -Dsonar.projectName="SQA Bunga - Form Mahasiswa Baru USTI"
+            -Dsonar.projectName="Project SQA - Form Mahasiswa Baru USTI"
             -Dsonar.projectVersion=2026.2.0
             -Dsonar.sources=.
             -Dsonar.language=php
@@ -271,12 +271,12 @@ jobs:
       # Step 4: Verifikasi file JMX tersedia
       - name: "Verifikasi File Konfigurasi JMeter"
         run: |
-          if [ ! -f "sqa_bunga_jmeter.jmx" ]; then
-            echo "FATAL: sqa_bunga_jmeter.jmx tidak ditemukan di root repositori!"
+          if [ ! -f "sqa_jmeter.jmx" ]; then
+            echo "FATAL: sqa_jmeter.jmx tidak ditemukan di root repositori!"
             exit 1
           fi
-          echo "sqa_bunga_jmeter.jmx ditemukan"
-          echo "Ukuran file: $(wc -c < sqa_bunga_jmeter.jmx) bytes"
+          echo "sqa_jmeter.jmx ditemukan"
+          echo "Ukuran file: $(wc -c < sqa_jmeter.jmx) bytes"
 
       # Step 5: Jalankan PHP Development Server
       - name: "Jalankan PHP Server di port ${{ env.APP_PORT }}"
@@ -323,18 +323,18 @@ jobs:
         id: run-jmeter
         run: |
           echo "=========================================="
-          echo "  SQA BUNGA - Black Box Testing JMeter"
+          echo "  SQA - Black Box Testing JMeter"
           echo "  Target : http://${{ env.APP_HOST }}:${{ env.APP_PORT }}${{ env.APP_ENDPOINT }}"
-          echo "  SK-1: Input Karakter (BungaAlice)"
+          echo "  SK-1: Input Karakter (Amanda)"
           echo "  SK-2: Input Angka    (123456)"
-          echo "  SK-3: Kombinasi      (Bunga2026)"
+          echo "  SK-3: Kombinasi      (Amanda2026)"
           echo "  SK-4: Input Kosong   (negatif test)"
           echo "=========================================="
 
           "apache-jmeter-${{ env.JMETER_VERSION }}/bin/jmeter" \
             -n \
-            -t  sqa_bunga_jmeter.jmx \
-            -l  jmeter-results/sqa_bunga_results.jtl \
+            -t  sqa_jmeter.jmx \
+            -l  jmeter-results/sqa_results.jtl \
             -e \
             -o  jmeter-results/html-report \
             -j  jmeter-results/jmeter-execution.log \
@@ -352,7 +352,7 @@ jobs:
         id: parse-results
         if: always()
         run: |
-          JTL_FILE="jmeter-results/sqa_bunga_results.jtl"
+          JTL_FILE="jmeter-results/sqa_results.jtl"
           if [ -f "$JTL_FILE" ]; then
             TOTAL=$(tail -n +2 "$JTL_FILE"  | wc -l | xargs)
             PASSED=$(tail -n +2 "$JTL_FILE" | awk -F',' '$8=="true"'  | wc -l | xargs)
@@ -404,9 +404,9 @@ jobs:
           echo "### 4 Skenario Pengujian:" >> $GITHUB_STEP_SUMMARY
           echo "| No | Skenario                    | Data Input | Expected | Warna Indikator |" >> $GITHUB_STEP_SUMMARY
           echo "|----|-----------------------------|-----------:|----------|-----------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 1  | Input Karakter              | BungaAlice | BERHASIL | Hijau  #198754  |" >> $GITHUB_STEP_SUMMARY
+          echo "| 1  | Input Karakter              | Amanda | BERHASIL | Hijau  #198754  |" >> $GITHUB_STEP_SUMMARY
           echo "| 2  | Input Angka                 | 123456     | BERHASIL | Biru   #0d6efd  |" >> $GITHUB_STEP_SUMMARY
-          echo "| 3  | Kombinasi Karakter + Angka  | Bunga2026  | BERHASIL | Oranye #fd7e14  |" >> $GITHUB_STEP_SUMMARY
+          echo "| 3  | Kombinasi Karakter + Angka  | Amanda2026  | BERHASIL | Oranye #fd7e14  |" >> $GITHUB_STEP_SUMMARY
           echo "| 4  | Input Kosong (Negatif Test) | (kosong)   | GAGAL    | Merah  #dc3545  |" >> $GITHUB_STEP_SUMMARY
 
       # Step 13: Upload laporan HTML JMeter
@@ -414,7 +414,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name:           "sqa-bunga-jmeter-html-report-run${{ github.run_number }}"
+          name:           "sqa-jmeter-html-report-run${{ github.run_number }}"
           path:           "jmeter-results/html-report/"
           retention-days: ${{ env.REPORT_RETENTION }}
 
@@ -423,8 +423,8 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name:           "sqa-bunga-jmeter-jtl-run${{ github.run_number }}"
-          path:           "jmeter-results/sqa_bunga_results.jtl"
+          name:           "sqa-jmeter-jtl-run${{ github.run_number }}"
+          path:           "jmeter-results/sqa_results.jtl"
           retention-days: ${{ env.REPORT_RETENTION }}
 
       # Step 15: Upload log eksekusi JMeter
@@ -432,7 +432,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name:           "sqa-bunga-jmeter-log-run${{ github.run_number }}"
+          name:           "sqa-jmeter-log-run${{ github.run_number }}"
           path:           "jmeter-results/jmeter-execution.log"
           retention-days: 7
 
@@ -529,7 +529,7 @@ jobs:
               "summary":     "[CI/CD #${{ github.run_number }}] $OVERALL - Form Mahasiswa Baru USTI",
               "issuetype":   { "name": "Task" },
               "priority":    { "name": "$PRIORITY" },
-              "labels":      ["sqa-bunga", "ci-cd", "automated", "form-mahasiswa-usti"],
+              "labels":      ["sqa", "ci-cd", "automated", "form-mahasiswa-usti"],
               "description": {
                 "type":    "doc",
                 "version": 1,
